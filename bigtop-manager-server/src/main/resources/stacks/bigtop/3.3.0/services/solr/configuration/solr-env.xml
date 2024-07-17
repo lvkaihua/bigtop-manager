@@ -1,0 +1,340 @@
+<?xml version="1.0"?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one
+  ~ or more contributor license agreements.  See the NOTICE file
+  ~ distributed with this work for additional information
+  ~ regarding copyright ownership.  The ASF licenses this file
+  ~ to you under the Apache License, Version 2.0 (the
+  ~ "License"); you may not use this file except in compliance
+  ~ with the License.  You may obtain a copy of the License at
+  ~
+  ~   http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied.  See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
+-->
+<configuration>
+  <property>
+    <name>solr_port</name>
+    <value>8983</value>
+    <description>Solr port</description>
+    <display-name>Solr port</display-name>
+  </property>
+
+  <property>
+    <name>solr_jmx_port</name>
+    <value>18983</value>
+    <description>Solr JMX port</description>
+    <display-name>Solr JMX port</display-name>
+  </property>
+
+  <property>
+    <name>solr_pid_dir</name>
+    <value>/var/run/solr</value>
+    <description>Solr Process ID Directory</description>
+    <display-name>Solr pid dir</display-name>
+  </property>
+
+  <property>
+    <name>solr_log_dir</name>
+    <value>/var/log/solr</value>
+    <description>Directory for Solr logs</description>
+    <display-name>Solr log dir</display-name>
+  </property>
+
+  <property>
+    <name>solr_user</name>
+    <value>solr</value>
+    <property-type>USER</property-type>
+    <description>Solr user</description>
+    <display-name>Solr User</display-name>
+  </property>
+
+  <property>
+    <name>solr_datadir</name>
+    <value>/var/lib/solr/data</value>
+    <display-name>Solr data dir</display-name>
+    <description>Directory for storting Solr index. Make sure you have enough disk space</description>
+  </property>
+
+  <property>
+    <name>solr_ssl_enabled</name>
+    <value>false</value>
+    <display-name>Enable SSL to Solr</display-name>
+    <description>Enable ssl to Solr</description>
+  </property>
+
+  <property>
+    <name>solr_truststore_location</name>
+    <value>/etc/security/serverKeys/infra.solr.trustStore.jks</value>
+    <display-name>Solr trust store location</display-name>
+    <description>Location of the trust store file. (default value is not generated)</description>
+  </property>
+
+  <property>
+    <name>solr_truststore_type</name>
+    <value>jks</value>
+    <display-name>Solr trust store type</display-name>
+    <description>Type of the trust store file.</description>
+  </property>
+
+  <property>
+    <name>solr_truststore_password</name>
+    <value>bigdata</value>
+    <property-type>PASSWORD</property-type>
+    <display-name>Solr trust store password</display-name>
+    <description>Password to open the trust store file.</description>
+  </property>
+
+  <property>
+    <name>solr_keystore_location</name>
+    <value>/etc/security/serverKeys/infra.solr.keyStore.jks</value>
+    <display-name>Solr key store location</display-name>
+    <description>Location of the key store file. (default value is not generated)</description>
+  </property>
+
+  <property>
+    <name>solr_keystore_type</name>
+    <value>jks</value>
+    <display-name>Solr key store type</display-name>
+    <description>Type of the key store file.</description>
+  </property>
+
+  <property>
+    <name>solr_keystore_password</name>
+    <value>bigdata</value>
+    <display-name>Solr key store password</display-name>
+    <property-type>PASSWORD</property-type>
+    <description>Password to open the key store file.</description>
+  </property>
+
+  <property>
+    <name>solr_znode</name>
+    <value>/solr</value>
+    <description>Zookeeper znode, e.g: /solr</description>
+    <display-name>Solr ZNode</display-name>
+  </property>
+
+  <property>
+    <name>solr_minmem</name>
+    <value>1024</value>
+    <display-name>Solr Minimum Heap Size</display-name>
+    <description>Solr minimum heap size e.g. 512m</description>
+  </property>
+
+  <property>
+    <name>solr_maxmem</name>
+    <value>2048</value>
+    <display-name>Solr Maximum Heap Size</display-name>
+    <description>Solr maximum heap size e.g. 512m</description>
+  </property>
+
+  <property>
+    <name>solr_java_stack_size</name>
+    <value>1</value>
+    <display-name>Solr Java Stack Size</display-name>
+    <description>Java Stack Size of Solr (-Xss) in MB.</description>
+  </property>
+
+  <property>
+    <name>solr_jmx_enabled</name>
+    <value>false</value>
+    <display-name>Enable JMX</display-name>
+    <description>Set to true to activate the JMX RMI connector to allow remote JMX client applications to monitor the JVM hosting Solr
+    </description>
+  </property>
+
+  <property>
+    <name>solr_kerberos_keytab</name>
+    <value>/etc/security/keytabs/solr.service.keytab</value>
+    <display-name>Solr keytab</display-name>
+    <description>The path to the Kerberos Keytab file containing service principal of the Solr.</description>
+  </property>
+
+  <property>
+    <name>solr_kerberos_principal</name>
+    <value>solr</value>
+    <display-name>Solr principal</display-name>
+    <description>The service principal for Solr.</description>
+  </property>
+
+  <property>
+    <name>solr_web_kerberos_keytab</name>
+    <value>/etc/security/keytabs/spnego.service.keytab</value>
+    <display-name>Solr Http keytab</display-name>
+    <description>The path to the Kerberos Keytab file containing service principal of the Solr.</description>
+  </property>
+
+  <property>
+    <name>solr_web_kerberos_principal</name>
+    <value>HTTP/_HOST@EXAMPLE.COM</value>
+    <display-name>Solr Http principal</display-name>
+    <description>The service principal for the Solr.</description>
+  </property>
+
+  <property>
+    <name>solr_zookeeper_quorum</name>
+    <value>{{zookeeper_quorum}}</value>
+    <display-name>Solr Znode</display-name>
+    <description>Placeholder for Solr Zookeeper connection string. (Use the cluster one by default, you can override this with a custom one if ZK needs to be external)</description>
+  </property>
+
+  <property>
+    <name>solr_zookeeper_external_principal</name>
+    <value>zookeeper/_HOST@EXAMPLE.COM</value>
+    <display-name>External ZK principal</display-name>
+    <description>The kerberos service principal name for external ZooKeeper.</description>
+  </property>
+
+  <property>
+    <name>solr_zookeeper_external_enabled</name>
+    <value>false</value>
+    <display-name>Enable External ZK</display-name>
+    <description>Enable external ZooKeeper. If the Solr is secure, the external ZK should be secure as well.</description>
+  </property>
+
+  <property>
+    <name>solr_kerberos_name_rules</name>
+    <value>DEFAULT</value>
+    <display-name>Solr Kerberos name rules</display-name>
+    <description>Kerberos name rules for Spnego</description>
+  </property>
+
+  <property>
+    <name>solr_user_nofile_limit</name>
+    <value>128000</value>
+    <description>Max open files limit setting for solr user.</description>
+  </property>
+
+  <property>
+    <name>solr_user_nproc_limit</name>
+    <value>65536</value>
+    <description>Max number of processes limit setting for solr user.</description>
+  </property>
+
+  <property>
+    <name>solr_extra_java_opts</name>
+    <value></value>
+    <display-name>Solr extra java options</display-name>
+    <description>Extra Solr java options (e.g.: -Dproperty=value), that will be added to SOLR_OPTS environment variable</description>
+  </property>
+
+  <property>
+    <name>solr_gc_log_opts</name>
+    <value>-verbose:gc -XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintTenuringDistribution -XX:+PrintGCApplicationStoppedTime -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=15 -XX:GCLogFileSize=200M</value>
+    <display-name>Solr GC log options</display-name>
+    <description>Solr GC log options</description>
+  </property>
+
+  <property>
+    <name>solr_gc_tune</name>
+    <value>-XX:NewRatio=3 -XX:SurvivorRatio=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=8 -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:ConcGCThreads=4 -XX:ParallelGCThreads=4 -XX:+CMSScavengeBeforeRemark -XX:PretenureSizeThreshold=64m -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=50 -XX:CMSMaxAbortablePrecleanTime=6000 -XX:+CMSParallelRemarkEnabled -XX:+ParallelRefProcEnabled</value>
+    <display-name>Solr GC Tune</display-name>
+    <description>Solr GC Tune</description>
+  </property>
+
+  <!-- solr-env.sh -->
+  <property>
+    <name>content</name>
+    <display-name>solr-env template</display-name>
+    <description>This is the jinja template for solr-env.sh file</description>
+    <value><![CDATA[
+    # By default the script will use JAVA_HOME to determine which java
+    # to use, but you can set a specific path for Solr to use without
+    # affecting other Java applications on your server/workstation.
+    SOLR_JAVA_HOME={{java64_home}}
+
+    # Increase Java Min/Max Heap as needed to support your indexing / query needs
+    SOLR_JAVA_MEM="-Xms{{solr_min_mem}}m -Xmx{{solr_max_mem}}m"
+
+    SOLR_JAVA_STACK_SIZE="-Xss{{solr_java_stack_size}}m"
+
+    GC_LOG_OPTS="{{solr_gc_log_opts}} -Xloggc:{{solr_log_dir}}/solr_gc.log"
+
+    GC_TUNE="{{solr_gc_tune}}"
+
+    # Set the ZooKeeper connection string if using an external ZooKeeper ensemble
+    # e.g. host1:2181,host2:2181/chroot
+    # Leave empty if not using SolrCloud
+    ZK_HOST="{{zookeeper_quorum}}{{solr_znode}}"
+
+    # Set the ZooKeeper client timeout (for SolrCloud mode)
+    ZK_CLIENT_TIMEOUT="60000"
+
+    # By default the start script uses "localhost"; override the hostname here
+    # for production SolrCloud environments to control the hostname exposed to cluster state
+    SOLR_HOST=`hostname -f`
+
+    # By default the start script uses UTC; override the timezone if needed
+    #SOLR_TIMEZONE="UTC"
+
+    # Set to true to activate the JMX RMI connector to allow remote JMX client applications
+    # to monitor the JVM hosting Solr; set to "false" to disable that behavior
+    # (false is recommended in production environments)
+    ENABLE_REMOTE_JMX_OPTS="{{solr_jmx_enabled}}"
+
+    # The script will use SOLR_PORT+10000 for the RMI_PORT or you can set it here
+    RMI_PORT={{solr_jmx_port}}
+
+    # Anything you add to the SOLR_OPTS variable will be included in the java
+    # start command line as-is, in ADDITION to other options. If you specify the
+    # -a option on start script, those options will be appended as well. Examples:
+    #SOLR_OPTS="$SOLR_OPTS -Dsolr.autoSoftCommit.maxTime=3000"
+    #SOLR_OPTS="$SOLR_OPTS -Dsolr.autoCommit.maxTime=60000"
+    #SOLR_OPTS="$SOLR_OPTS -Dsolr.clustering.enabled=true"
+    SOLR_OPTS="$SOLR_OPTS -Djava.rmi.server.hostname={{hostname}}"
+    {% if solr_extra_java_opts -%}
+    SOLR_OPTS="$SOLR_OPTS {{solr_extra_java_opts}}"
+    {% endif %}
+
+    # Location where the bin/solr script will save PID files for running instances
+    # If not set, the script will create PID files in $SOLR_TIP/bin
+    SOLR_PID_DIR={{solr_piddir}}
+
+    # Path to a directory where Solr creates index files, the specified directory
+    # must contain a solr.xml; by default, Solr will use server/solr
+    SOLR_HOME={{solr_datadir}}
+
+    # Solr provides a default Log4J configuration properties file in server/resources
+    # however, you may want to customize the log settings and file appender location
+    # so you can point the script to use a different log4j.properties file
+    LOG4J_PROPS={{solr_conf}}/log4j2.xml
+
+    # Location where Solr should write logs to; should agree with the file appender
+    # settings in server/resources/log4j.properties
+    SOLR_LOGS_DIR={{solr_log_dir}}
+
+    # Sets the port Solr binds to, default is 8983
+    SOLR_PORT={{solr_port}}
+
+    # Be sure to update the paths to the correct keystore for your environment
+    {% if solr_ssl_enabled %}
+    SOLR_SSL_KEY_STORE={{solr_keystore_location}}
+    SOLR_SSL_KEY_STORE_PASSWORD={{solr_keystore_password}}
+    SOLR_SSL_TRUST_STORE={{solr_truststore_location}}
+    SOLR_SSL_TRUST_STORE_PASSWORD={{solr_truststore_password}}
+    SOLR_SSL_NEED_CLIENT_AUTH=false
+    SOLR_SSL_WANT_CLIENT_AUTH=false
+    {% endif %}
+
+    # Uncomment to set a specific SSL port (-Djetty.ssl.port=N); if not set
+    # and you are using SSL, then the start script will use SOLR_PORT for the SSL port
+    #SOLR_SSL_PORT=
+
+    {% if security_enabled -%}
+    SOLR_JAAS_FILE={{solr_jaas_file}}
+    SOLR_KERB_KEYTAB={{solr_web_kerberos_keytab}}
+    SOLR_KERB_PRINCIPAL={{solr_web_kerberos_principal}}
+    SOLR_OPTS="$SOLR_OPTS -Dsolr.hdfs.security.kerberos.principal={{solr_kerberos_principal}}"
+    SOLR_OPTS="$SOLR_OPTS {{zk_security_opts}}"
+
+    SOLR_AUTH_TYPE="kerberos"
+    SOLR_AUTHENTICATION_OPTS=" -DauthenticationPlugin=org.apache.solr.security.KerberosPlugin -Djava.security.auth.login.config=$SOLR_JAAS_FILE -Dsolr.kerberos.principal=${SOLR_KERB_PRINCIPAL} -Dsolr.kerberos.keytab=${SOLR_KERB_KEYTAB} -Dsolr.kerberos.cookie.domain=${SOLR_HOST}"
+    ]]>
+    </value>
+  </property>
+</configuration>
