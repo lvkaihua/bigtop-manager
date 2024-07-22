@@ -18,11 +18,11 @@
   ~ under the License.
 -->
 <metainfo>
-    <schemaVersion>2.0</schemaVersion>
+    <schema-version>2.0</schema-version>
     <services>
         <service>
             <name>solr</name>
-            <displayName>Solr</displayName>
+            <display-name>Solr</display-name>
             <comment>
                 Solr is the popular, blazing-fast, open source enterprise search platform built on Apache Lucene.
             </comment>
@@ -32,7 +32,7 @@
             <components>
                 <component>
                     <name>SOLR</name>
-                    <displayName>Solr Instance</displayName>
+                    <display-name>Solr Instance</display-name>
                     <category>MASTER</category>
                     <cardinality>1+</cardinality>
                     <command-script>
