@@ -58,6 +58,7 @@ public class SolrSetup {
                 solrGroup,
                 Constants.PERMISSION_755,
                 solrParams.getGlobalParamsMap());
+        log.info("lvkaihua solr-env");
         // solr-log4j.xml
         LinuxFileUtils.toFileByTemplate(
                 solrParams.solrLog4j().get("content").toString(),
@@ -66,6 +67,7 @@ public class SolrSetup {
                 solrGroup,
                 Constants.PERMISSION_755,
                 solrParams.getGlobalParamsMap());
+        log.info("lvkaihua solr-log4j");
         // solr-xml.xml
         LinuxFileUtils.toFileByTemplate(
                 solrParams.solrxml().get("content").toString(),
@@ -74,6 +76,7 @@ public class SolrSetup {
                 solrGroup,
                 Constants.PERMISSION_755,
                 solrParams.getGlobalParamsMap());
+        log.info("lvkaihua solr-xml");
 
         return ShellResult.success("solr Server Configure success!");
     }
