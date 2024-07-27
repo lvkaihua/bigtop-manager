@@ -50,6 +50,7 @@ public class SolrServerScript implements Script {
         SolrParams solrParams = (SolrParams) params;
 
         String cmd = MessageFormat.format("sh {0}/bin/solr start", solrParams.serviceHome());
+        log.info(cmd);
         try {
             return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
         } catch (IOException e) {
