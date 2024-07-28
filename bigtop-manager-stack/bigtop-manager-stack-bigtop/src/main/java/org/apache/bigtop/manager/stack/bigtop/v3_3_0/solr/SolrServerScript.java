@@ -49,7 +49,7 @@ public class SolrServerScript implements Script {
         configure(params);
         SolrParams solrParams = (SolrParams) params;
         log.info("lvkaihua");
-        String cmd = MessageFormat.format("sh {0}/bin/solr start", solrParams.serviceHome());
+        String cmd = MessageFormat.format("{0}/bin/solr start", solrParams.serviceHome());
         log.info("lvkaihua1");
         log.info(cmd);
         try {
@@ -62,7 +62,7 @@ public class SolrServerScript implements Script {
     @Override
     public ShellResult stop(Params params) {
         SolrParams solrParams = (SolrParams) params;
-        String cmd = MessageFormat.format("sh {0}/bin/solr stop -all", solrParams.serviceHome());
+        String cmd = MessageFormat.format("{0}/bin/solr stop -all", solrParams.serviceHome());
         try {
             return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
         } catch (IOException e) {
