@@ -49,8 +49,8 @@
 
           <RollingFile
                   name="RollingFile"
-                  fileName="{{solr_log_dir}}/solr.log"
-                  filePattern="{{solr_log_dir}}/solr.log.%i" >
+                  fileName="${solr_log_dir}/solr.log"
+                  filePattern="${solr_log_dir}/solr.log.%i" >
             <PatternLayout>
               <Pattern>
                 %d{ISO8601} [%t] %-5p [%X{collection} %X{shard} %X{replica} %X{core}] %C (%F:%L) - %m%n
@@ -58,15 +58,15 @@
             </PatternLayout>
             <Policies>
               <OnStartupTriggeringPolicy />
-              <SizeBasedTriggeringPolicy size="{{log_maxfilesize}} MB"/>
+              <SizeBasedTriggeringPolicy size="${log_maxfilesize} MB"/>
             </Policies>
-            <DefaultRolloverStrategy max="{{log_maxbackupindex}}"/>
+            <DefaultRolloverStrategy max="${log_maxbackupindex}"/>
           </RollingFile>
 
           <RollingFile
                   name="SlowFile"
-                  fileName="{{solr_log_dir}}/solr_slow_requests.log"
-                  filePattern="{{solr_log_dir}}/solr_slow_requests.log.%i" >
+                  fileName="${solr_log_dir}/solr_slow_requests.log"
+                  filePattern="${solr_log_dir}/solr_slow_requests.log.%i" >
             <PatternLayout>
               <Pattern>
                 %d{ISO8601} [%t] %-5p [%X{collection} %X{shard} %X{replica} %X{core}] %C (%F:%L) - %m%n
@@ -74,9 +74,9 @@
             </PatternLayout>
             <Policies>
               <OnStartupTriggeringPolicy />
-              <SizeBasedTriggeringPolicy size="{{log_maxfilesize}} MB"/>
+              <SizeBasedTriggeringPolicy size="${log_maxfilesize} MB"/>
             </Policies>
-            <DefaultRolloverStrategy max="{{log_maxbackupindex}}"/>
+            <DefaultRolloverStrategy max="${log_maxbackupindex}"/>
           </RollingFile>
 
         </Appenders>
