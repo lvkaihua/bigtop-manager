@@ -24,8 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bigtop.manager.common.constants.Constants;
 import org.apache.bigtop.manager.common.shell.ShellResult;
 import org.apache.bigtop.manager.spi.stack.Params;
+import org.apache.bigtop.manager.stack.common.utils.LocalSettings;
 import org.apache.bigtop.manager.stack.common.utils.linux.LinuxFileUtils;
 import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import static org.apache.bigtop.manager.common.constants.Constants.PERMISSION_755;
 
@@ -51,13 +54,17 @@ public class SolrSetup {
 
 
         // solr-env.xml
+        List<String> zookeeperServerHosts = LocalSettings.hosts("zookeeper_server");
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("zookeeper_quorum", zookeeperServerHosts);
         LinuxFileUtils.toFileByTemplate(
                 solrEnv.get("content").toString(),
                 MessageFormat.format("{0}/solr-env.xml", confDir),
                 solrUser,
                 solrGroup,
                 Constants.PERMISSION_755,
-                solrParams.getGlobalParamsMap());
+                solrParams.getGlobalParamsMap(),
+                paramMap);
         log.info("lvkaihua solr-env");
         // solr-log4j.xml
         LinuxFileUtils.toFileByTemplate(

@@ -52,7 +52,7 @@
                         <arch>x86_64</arch>
                     </architectures>
                     <packages>
-                        <package>solr</package>
+                        <package>solr_3_3_0</package>
                     </packages>
                 </os-specific>
             </os-specifics>
