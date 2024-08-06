@@ -71,7 +71,7 @@ public class SolrSetup {
         // solr-xml.xml
         LinuxFileUtils.toFileByTemplate(
                 solrParams.solrxml().get("content").toString(),
-                MessageFormat.format("{0}/solr-xml.xml", confDir),
+                MessageFormat.format("{0}/solr.xml", confDir),
                 solrUser,
                 solrGroup,
                 Constants.PERMISSION_755,

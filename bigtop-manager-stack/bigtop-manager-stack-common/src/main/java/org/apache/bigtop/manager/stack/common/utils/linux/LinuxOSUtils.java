@@ -30,9 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 
 import static org.apache.bigtop.manager.common.constants.Constants.ROOT_USER;
 
@@ -51,7 +49,9 @@ public class LinuxOSUtils {
     public static ShellResult sudoExecCmd(String command, String tenant) throws IOException {
         return execCmd(command, getTenant(tenant));
     }
-
+    public static ShellResult sudoExecCmd(String command, String tenant,Map env) throws IOException {
+        return execCmd(command, getTenant(tenant),env);
+    }
     /**
      * get sudo command
      *
@@ -79,6 +79,19 @@ public class LinuxOSUtils {
         builderParameters.add(command);
         return ShellExecutor.execCommand(builderParameters);
     }
+
+    public static ShellResult execCmd(String command, String tenant, Map env) throws IOException {
+        List<String> builderParameters = new ArrayList<>();
+        builderParameters.add("sudo");
+        builderParameters.add("-u");
+        builderParameters.add(tenant);
+        builderParameters.add("sh");
+        builderParameters.add("-c");
+        builderParameters.add(command);
+        log.info(env.toString());
+        return ShellExecutor.execCommand(env, builderParameters);
+    }
+
 
     /**
      * Execute the corresponding command of Linux or Windows

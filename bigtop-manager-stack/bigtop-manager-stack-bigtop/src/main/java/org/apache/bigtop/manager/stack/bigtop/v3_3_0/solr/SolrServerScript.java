@@ -49,11 +49,11 @@ public class SolrServerScript implements Script {
         configure(params);
         SolrParams solrParams = (SolrParams) params;
         log.info("lvkaihua");
-        String cmd = MessageFormat.format("{0}/bin/solr start", solrParams.serviceHome());
+        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -force", solrParams.serviceHome());
         log.info("lvkaihua1");
         log.info(cmd);
         try {
-            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
+            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),solrParams.solrEnv());
         } catch (IOException e) {
             throw new StackException(e);
         }
