@@ -53,7 +53,8 @@ public class SolrServerScript implements Script {
         log.info("lvkaihua1");
         log.info(cmd);
         try {
-            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),solrParams.solrEnv());
+            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
+//            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),solrParams.solrEnv());
         } catch (IOException e) {
             throw new StackException(e);
         }

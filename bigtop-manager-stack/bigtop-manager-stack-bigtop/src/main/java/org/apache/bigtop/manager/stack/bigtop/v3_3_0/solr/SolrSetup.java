@@ -56,7 +56,9 @@ public class SolrSetup {
         // solr-env.xml
         List<String> zookeeperServerHosts = LocalSettings.hosts("zookeeper_server");
         Map<String, Object> paramMap = new HashMap<>();
+        log.info(zookeeperServerHosts.toString());
         paramMap.put("zookeeper_quorum", zookeeperServerHosts);
+        paramMap.put("host", solrParams.hostname());
         LinuxFileUtils.toFileByTemplate(
                 solrEnv.get("content").toString(),
                 MessageFormat.format("{0}/solr-env.xml", confDir),
