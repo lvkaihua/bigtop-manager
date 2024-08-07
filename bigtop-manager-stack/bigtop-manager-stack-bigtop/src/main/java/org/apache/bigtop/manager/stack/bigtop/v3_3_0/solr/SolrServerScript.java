@@ -29,6 +29,8 @@ import org.apache.bigtop.manager.stack.common.utils.linux.LinuxOSUtils;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @AutoService(Script.class)
@@ -48,13 +50,15 @@ public class SolrServerScript implements Script {
     public ShellResult start(Params params) {
         configure(params);
         SolrParams solrParams = (SolrParams) params;
-        log.info("lvkaihua");
-        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -force", solrParams.serviceHome());
-        log.info("lvkaihua1");
-        log.info(cmd);
+        Map env = new HashMap();
+        String confdir = MessageFormat.format("{0}/solr-env.xml",solrParams.confDir());
+        env.put("SOLR_INCLUDE",confdir);
+        log.info(env.toString());
+//        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -force", solrParams.serviceHome());
+        String cmd = MessageFormat.format("{0}/bin/solr start -Dsolr.solr.home={0}", solrParams.serviceHome());
         try {
-            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
-//            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),solrParams.solrEnv());
+//            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
+            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),env);
         } catch (IOException e) {
             throw new StackException(e);
         }

@@ -49,9 +49,9 @@ public class LinuxOSUtils {
     public static ShellResult sudoExecCmd(String command, String tenant) throws IOException {
         return execCmd(command, getTenant(tenant));
     }
-//    public static ShellResult sudoExecCmd(String command, String tenant,Map env) throws IOException {
-//        return execCmd(command, getTenant(tenant),env);
-//    }
+    public static ShellResult sudoExecCmd(String command, String tenant,Map env) throws IOException {
+        return execCmd(command, getTenant(tenant),env);
+    }
     /**
      * get sudo command
      *
@@ -80,17 +80,17 @@ public class LinuxOSUtils {
         return ShellExecutor.execCommand(builderParameters);
     }
 
-//    public static ShellResult execCmd(String command, String tenant, Map env) throws IOException {
-//        List<String> builderParameters = new ArrayList<>();
-//        builderParameters.add("sudo");
-//        builderParameters.add("-u");
-//        builderParameters.add(tenant);
-//        builderParameters.add("sh");
-//        builderParameters.add("-c");
-//        builderParameters.add(command);
-//        log.info(env.toString());
-//        return ShellExecutor.execCommand(env, builderParameters);
-//    }
+    public static ShellResult execCmd(String command, String tenant, Map env) throws IOException {
+        List<String> builderParameters = new ArrayList<>();
+        builderParameters.add("sudo");
+        builderParameters.add("-u");
+        builderParameters.add(tenant);
+        builderParameters.add("sh");
+        builderParameters.add("-c");
+        builderParameters.add(command);
+        log.info(env.toString());
+        return ShellExecutor.execCommand(env, builderParameters);
+    }
 
 
     /**
