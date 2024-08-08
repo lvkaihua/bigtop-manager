@@ -36,7 +36,7 @@ public class SolrParams extends BaseParams {
 
     private String solrLogDir = "/var/log/solr";
     private String solrPidDir = "/var/run/solr";
-    private String solrDataDir = "/var/lib/solr/data";
+    private String solrDataDir = "/var/lib/solr";
     private String solrPidFile = solrPidDir + "/solr_server.pid";
 
     public SolrParams(CommandPayload commandPayload) {
@@ -64,16 +64,11 @@ public class SolrParams extends BaseParams {
         Map<String, Object> solrEnv = LocalSettings.configurations(serviceName(), "solr-env");
         String clientPort = (String) zkport.get("clientPort");
         String znode = (String) solrEnv.get("solr_znode");
-        zookeeperServerHosts.sort(String::compareToIgnoreCase);
-        StringBuilder solrzkstring = new StringBuilder();
-        for (String zkHost : zookeeperServerHosts) {
-            solrzkstring
-                    .append(MessageFormat.format("{0}:{1},", zkHost, clientPort));
-        }
+        String solrzkstring = MessageFormat.format("{0}:{1}", zookeeperServerHosts.get(0),clientPort);
         log.info(znode+" znode");
         log.info(clientPort+" clientPort");
         log.info(solrzkstring+" solrzkstring");
-        String zkconnect = MessageFormat.format("{0}/{1}", solrzkstring,znode);
+        String zkconnect = MessageFormat.format("{0}{1}", solrzkstring,znode);
         log.info(zkconnect+" zkconnect");
         return zkconnect;
     }
