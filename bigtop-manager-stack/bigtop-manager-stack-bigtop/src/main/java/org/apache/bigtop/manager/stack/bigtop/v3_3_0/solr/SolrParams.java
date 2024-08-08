@@ -23,10 +23,15 @@ import org.apache.bigtop.manager.common.message.entity.payload.CommandPayload;
 import org.apache.bigtop.manager.stack.common.annotations.GlobalParams;
 import org.apache.bigtop.manager.stack.common.utils.BaseParams;
 import org.apache.bigtop.manager.stack.common.utils.LocalSettings;
+import lombok.extern.slf4j.Slf4j;
 
+
+import java.text.MessageFormat;
+import java.util.List;
 import java.util.Map;
 
 @Getter
+@Slf4j
 public class SolrParams extends BaseParams {
 
     private String solrLogDir = "/var/log/solr";
@@ -51,6 +56,26 @@ public class SolrParams extends BaseParams {
     @GlobalParams
     public Map<String, Object> solrLog4j() {
         return LocalSettings.configurations(serviceName(), "solr-log4j");
+    }
+
+    public String ZK_HOST(){
+        List<String> zookeeperServerHosts = LocalSettings.hosts("zookeeper_server");
+        Map<String, Object> zkport = LocalSettings.configurations("zookeeper", "zoo.cfg");
+        Map<String, Object> solrEnv = LocalSettings.configurations(serviceName(), "solr-env");
+        String clientPort = (String) zkport.get("clientPort");
+        String znode = (String) solrEnv.get("solr_znode");
+        zookeeperServerHosts.sort(String::compareToIgnoreCase);
+        StringBuilder solrzkstring = new StringBuilder();
+        for (String zkHost : zookeeperServerHosts) {
+            solrzkstring
+                    .append(MessageFormat.format("{0}:{1},", zkHost, clientPort));
+        }
+        log.info(znode+" znode");
+        log.info(clientPort+" clientPort");
+        log.info(solrzkstring+" solrzkstring");
+        String zkconnect = MessageFormat.format("{0}/{1}", solrzkstring,znode);
+        log.info(zkconnect+" zkconnect");
+        return zkconnect;
     }
 
     @GlobalParams

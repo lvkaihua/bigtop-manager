@@ -24,6 +24,7 @@ import org.apache.bigtop.manager.common.shell.ShellResult;
 import org.apache.bigtop.manager.spi.stack.Params;
 import org.apache.bigtop.manager.spi.stack.Script;
 import org.apache.bigtop.manager.stack.common.exception.StackException;
+import org.apache.bigtop.manager.stack.common.utils.LocalSettings;
 import org.apache.bigtop.manager.stack.common.utils.PackageUtils;
 import org.apache.bigtop.manager.stack.common.utils.linux.LinuxOSUtils;
 
@@ -52,10 +53,12 @@ public class SolrServerScript implements Script {
         SolrParams solrParams = (SolrParams) params;
         Map env = new HashMap();
         String confdir = MessageFormat.format("{0}/solr-env.xml",solrParams.confDir());
+
         env.put("SOLR_INCLUDE",confdir);
         log.info(env.toString());
+        log.info("lvkaihua1 "+ solrParams.solrEnv().toString());
 //        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -force", solrParams.serviceHome());
-        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -noprompt -s {1} -Dsolr.default.confdir={1} -z {2}", solrParams.serviceHome(),solrParams.getSolrDataDir(),solrParams.solrEnv().get("ZK_HOST"));
+        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -noprompt -s {1} -Dsolr.default.confdir={1} -z {2}", solrParams.serviceHome(),solrParams.getSolrDataDir(),solrParams.ZK_HOST());
         log.info(cmd + "lvkaihua");
         try {
 //            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
