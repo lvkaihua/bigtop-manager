@@ -29,6 +29,7 @@ import java.util.Map;
 @Getter
 public class SolrParams extends BaseParams {
 
+    private String ZK_HOST = null;
     private String solrLogDir = "/var/log/solr";
     private String solrPidDir = "/var/run/solr";
     private String solrDataDir = "/var/lib/solr/data";
@@ -60,6 +61,7 @@ public class SolrParams extends BaseParams {
         solrPidDir = (String) solrEnv.get("solr_pid_dir");
         solrDataDir = (String) solrEnv.get("solr_datadir");
         solrPidFile = solrPidDir + "/solr_server.pid";
+        ZK_HOST = (String) solrEnv.get("ZK_HOST");
         return solrEnv;
     }
 }

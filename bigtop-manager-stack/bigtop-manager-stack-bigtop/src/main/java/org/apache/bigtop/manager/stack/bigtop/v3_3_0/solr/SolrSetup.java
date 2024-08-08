@@ -56,7 +56,6 @@ public class SolrSetup {
         // solr-env.xml
         List<String> zookeeperServerHosts = LocalSettings.hosts("zookeeper_server");
         Map<String, Object> paramMap = new HashMap<>();
-        log.info(zookeeperServerHosts.toString());
         paramMap.put("zookeeper_quorum", zookeeperServerHosts);
         paramMap.put("host", solrParams.hostname());
         LinuxFileUtils.toFileByTemplate(
@@ -71,7 +70,7 @@ public class SolrSetup {
         // solr-log4j.xml
         LinuxFileUtils.toFileByTemplate(
                 solrParams.solrLog4j().get("content").toString(),
-                MessageFormat.format("{0}/solr-log4j.xml", confDir),
+                MessageFormat.format("{0}/log4j2.xml", confDir),
                 solrUser,
                 solrGroup,
                 Constants.PERMISSION_755,
