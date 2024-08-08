@@ -55,7 +55,8 @@ public class SolrServerScript implements Script {
         env.put("SOLR_INCLUDE",confdir);
         log.info(env.toString());
 //        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -force", solrParams.serviceHome());
-        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -noprompt -s {1} -Dsolr.default.confdir={1} -z {2}", solrParams.serviceHome(),solrParams.getSolrDataDir(),solrParams.getZK_HOST());
+        String cmd = MessageFormat.format("{0}/bin/solr start -cloud -noprompt -s {1} -Dsolr.default.confdir={1} -z {2}", solrParams.serviceHome(),solrParams.getSolrDataDir(),solrParams.solrEnv().get("ZK_HOST"));
+        log.info(cmd + "lvkaihua");
         try {
 //            return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user());
             return LinuxOSUtils.sudoExecCmd(cmd, solrParams.user(),env);
