@@ -36,13 +36,14 @@ public class SolrParams extends BaseParams {
 
     private String solrLogDir = "/var/log/solr";
     private String solrPidDir = "/var/run/solr";
-    private String solrDataDir = "/var/lib/solr";
+    private String solrHomeDir = "/var/lib/solr";
+    private String solrDataDir = "/var/lib/solr/data";
     private String solrPidFile = solrPidDir + "/solr_server.pid";
 
     public SolrParams(CommandPayload commandPayload) {
         super(commandPayload);
         globalParamsMap.put("java_home", "/usr/local/java");
-        globalParamsMap.put("solr_home", serviceHome());
+        globalParamsMap.put("solr_home", solrHomeDir);
         globalParamsMap.put("security_enabled", false);
         globalParamsMap.put("solr_pid_file", solrPidFile);
         globalParamsMap.put("yarn_user", user());

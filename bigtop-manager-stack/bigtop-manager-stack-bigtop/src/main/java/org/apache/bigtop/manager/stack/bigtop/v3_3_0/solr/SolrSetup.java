@@ -46,6 +46,8 @@ public class SolrSetup {
         Map<String, Object> solrEnv = solrParams.solrEnv();
 
         LinuxFileUtils.createDirectories(
+                solrParams.getSolrHomeDir(),solrUser,solrGroup,PERMISSION_755,true);
+        LinuxFileUtils.createDirectories(
                 solrParams.getSolrDataDir(), solrUser, solrGroup, PERMISSION_755, true);
         LinuxFileUtils.createDirectories(
                 solrParams.getSolrLogDir(), solrUser, solrGroup, PERMISSION_755, true);
@@ -79,7 +81,7 @@ public class SolrSetup {
         // solr-xml.xml
         LinuxFileUtils.toFileByTemplate(
                 solrParams.solrxml().get("content").toString(),
-                MessageFormat.format("{0}/solr.xml", confDir),
+                MessageFormat.format("{0}/solr.xml", solrParams.getSolrDataDir()),
                 solrUser,
                 solrGroup,
                 Constants.PERMISSION_755,
