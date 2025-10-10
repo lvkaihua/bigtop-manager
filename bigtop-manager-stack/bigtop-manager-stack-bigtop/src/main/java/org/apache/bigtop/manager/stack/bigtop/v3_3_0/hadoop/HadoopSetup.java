@@ -264,7 +264,7 @@ public class HadoopSetup {
             throw new IllegalArgumentException("JournalNode host list cannot be empty!");
         }
         int retryCount = 0;
-        int maxRetry = 30;
+        int maxRetry = 100;
         long retryIntervalMs = 2000;
         int connectTimeoutMs = 1000;
         while (retryCount < maxRetry) {
