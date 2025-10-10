@@ -65,6 +65,7 @@ public class HadoopParams extends BigtopParams {
     private String dfsDomainSocketPathPrefix;
     private String dfsJourNalNodeDir;
     private String dfsHttpPort;
+    private String journalHttpPort;
 
     private String nodeManagerLogDir = "/hadoop/yarn/log";
     private String nodeManagerLocalDir = "/hadoop/yarn/local";
@@ -181,9 +182,16 @@ public class HadoopParams extends BigtopParams {
         if (dfsHttpAddress != null && dfsHttpAddress.contains(":")) {
             String[] parts = dfsHttpAddress.split(":");
             if (parts.length >= 2) {
-                log.warn("parts: " + parts);
                 dfsHttpPort = parts[1].trim();
-                log.warn("dfsHttpPort: " + dfsHttpPort);
+            }
+        }
+        String journalHttpAddress= (String) hdfsSite.get("dfs.namenode.shared.edits.dir");
+        if (journalHttpAddress != null && journalHttpAddress.contains(":")) {
+            String[] jparts = journalHttpAddress.split(":");
+            if (jparts.length >= 2) {
+                log.warn("jparts: " + jparts);
+                journalHttpPort = jparts[1].trim();
+                log.warn("journalHttpPort: " + journalHttpPort);
             }
         }
         String dfsDomainSocketPath = (String) hdfsSite.get("dfs.domain.socket.path");
