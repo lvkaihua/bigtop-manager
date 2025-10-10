@@ -39,6 +39,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Getter
 @Slf4j
@@ -186,13 +188,13 @@ public class HadoopParams extends BigtopParams {
             }
         }
         String journalHttpAddress= (String) hdfsSite.get("dfs.namenode.shared.edits.dir");
-        if (journalHttpAddress != null && journalHttpAddress.contains(":")) {
-            String[] jparts = journalHttpAddress.split(":");
-            if (jparts.length >= 2) {
-                log.warn("jparts: " + jparts);
-                journalHttpPort = jparts[1].trim();
-                log.warn("journalHttpPort: " + journalHttpPort);
-            }
+        Pattern pattern = Pattern.compile(":(\\d{1,5})");
+        Matcher matcher = pattern.matcher(journalHttpAddress);
+        if (matcher.find()) {
+            journalHttpPort = matcher.group(1);
+            log.info("find jounalnode port: " + journalHttpPort);
+        } else {
+            log.warn("not found journalnode port!");
         }
         String dfsDomainSocketPath = (String) hdfsSite.get("dfs.domain.socket.path");
         if (StringUtils.isNotBlank(dfsDomainSocketPath)) {
