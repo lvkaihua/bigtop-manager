@@ -41,12 +41,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Getter
 @Slf4j
 @AutoService(Params.class)
 @NoArgsConstructor
 public class HadoopParams extends BigtopParams {
+
+    /**
+     * nameservice 默认值为 nameservice1；当配置中存在 dfs.nameservices 时优先使用。
+     * 这样在“单 NN -> 启用 HA”流程中前端修改 nameservice 后，只要写入配置即可生效。
+     */
+    private String resolveNameService() {
+        try {
+            Map<String, Object> hdfsSite = LocalSettings.configurations(getServiceName(), "hdfs-site");
+            Object ns = hdfsSite.get("dfs.nameservices");
+            if (ns != null && StringUtils.isNotBlank(ns.toString())) {
+                // 若包含逗号（多 nameservice），当前仅取第一个
+                return ns.toString().split("\\s*,\\s*")[0].trim();
+            }
+        } catch (Exception e) {
+            // ignore and fallback
+        }
+        return "nameservice1";
+    }
 
     private final String hadoopLogDir = "/var/log/hadoop";
     private final String hadoopPidDir = "/var/run/hadoop";
@@ -127,8 +146,10 @@ public class HadoopParams extends BigtopParams {
             coreSite.put(
                     "fs.defaultFS", ((String) coreSite.get("fs.defaultFS")).replace("localhost", namenodeList.get(0)));
         } else if (!namenodeList.isEmpty() && namenodeList.size() == 2) {
+            String nameservice = resolveNameService();
             coreSite.put(
-                    "fs.defaultFS", ((String) coreSite.get("fs.defaultFS")).replace("localhost:8020", "nameservice1"));
+                    "fs.defaultFS",
+                    ((String) coreSite.get("fs.defaultFS")).replace("localhost:8020", nameservice));
             coreSite.put("ha.zookeeper.quorum", zkString);
         }
         return coreSite;
@@ -155,23 +176,31 @@ public class HadoopParams extends BigtopParams {
                     "dfs.namenode.https-address",
                     ((String) hdfsSite.get("dfs.namenode.https-address")).replace("0.0.0.0", namenodeList.get(0)));
         } else if (!namenodeList.isEmpty() && namenodeList.size() == 2) {
+            if (journalNodeList == null || journalNodeList.size() < 3) {
+                throw new IllegalArgumentException("JournalNode host list must be at least 3 for HDFS HA");
+            }
+
+            String nameservice = resolveNameService();
+            String journalQuorum = journalNodeList.stream().map(x -> x + ":8485").collect(Collectors.joining(";"));
+
+            // 清理单机模式可能存在的 key，避免与 HA 配置混杂
+            hdfsSite.remove("dfs.namenode.rpc-address");
+            hdfsSite.remove("dfs.namenode.https-address");
             hdfsSite.remove("dfs.namenode.http-address");
+
             hdfsSite.put("dfs.ha.automatic-failover.enabled", "true");
-            hdfsSite.put("dfs.nameservices", "nameservice1");
-            hdfsSite.put("dfs.ha.namenodes.nameservice1", "nn1,nn2");
-            hdfsSite.put("dfs.namenode.rpc-address.nameservice1.nn1", namenodeList.get(0) + ":8020");
-            hdfsSite.put("dfs.namenode.rpc-address.nameservice1.nn2", namenodeList.get(1) + ":8020");
-            hdfsSite.put("dfs.namenode.http-address.nameservice1.nn1", namenodeList.get(0) + ":9870");
-            hdfsSite.put("dfs.namenode.http-address.nameservice1.nn2", namenodeList.get(1) + ":9870");
-            hdfsSite.put(
-                    "dfs.namenode.shared.edits.dir",
-                    "qjournal://" + journalNodeList.get(0) + ":8485;" + journalNodeList.get(1) + ":8485;"
-                            + journalNodeList.get(2) + ":8485" + "/nameservice1");
+            hdfsSite.put("dfs.nameservices", nameservice);
+            hdfsSite.put("dfs.ha.namenodes." + nameservice, "nn1,nn2");
+            hdfsSite.put("dfs.namenode.rpc-address." + nameservice + ".nn1", namenodeList.get(0) + ":8020");
+            hdfsSite.put("dfs.namenode.rpc-address." + nameservice + ".nn2", namenodeList.get(1) + ":8020");
+            hdfsSite.put("dfs.namenode.http-address." + nameservice + ".nn1", namenodeList.get(0) + ":9870");
+            hdfsSite.put("dfs.namenode.http-address." + nameservice + ".nn2", namenodeList.get(1) + ":9870");
+            hdfsSite.put("dfs.namenode.shared.edits.dir", "qjournal://" + journalQuorum + "/" + nameservice);
+
             hdfsSite.put("dfs.journalnode.edits.dir", "/hadoop/dfs/journal");
             hdfsSite.put(
-                    "dfs.client.failover.proxy.provider.nameservice1",
+                    "dfs.client.failover.proxy.provider." + nameservice,
                     "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider");
-            hdfsSite.put("dfs.journalnode.edits.dir", "/hadoop/dfs/journal");
             hdfsSite.put("dfs.ha.fencing.methods", "shell(/bin/true)");
             hdfsSite.put("dfs.replication", "3");
         }
@@ -220,32 +249,136 @@ public class HadoopParams extends BigtopParams {
     public Map<String, Object> yarnSite() {
         Map<String, Object> yarnSite = LocalSettings.configurations(getServiceName(), "yarn-site");
         List<String> resourcemanagerList = LocalSettings.componentHosts("resourcemanager");
-        if (!resourcemanagerList.isEmpty()) {
-            yarnSite.put("yarn.resourcemanager.hostname", MessageFormat.format("{0}", resourcemanagerList.get(0)));
-            yarnSite.put(
+
+        // YARN ResourceManager HA
+        // When there are >= 2 RMs, or `yarn.resourcemanager.ha.enabled=true` is explicitly set,
+        // enter HA mode. In HA mode, do not set single-RM keys like `yarn.resourcemanager.hostname`
+        // to avoid conflicts.
+        boolean haEnabledByConfig = false;
+        Object haEnabledValue = yarnSite.get("yarn.resourcemanager.ha.enabled");
+        if (haEnabledValue != null) {
+            haEnabledByConfig = "true".equalsIgnoreCase(haEnabledValue.toString().trim());
+        }
+        boolean haMode = (resourcemanagerList != null && resourcemanagerList.size() >= 2) || haEnabledByConfig;
+
+        if (haMode && resourcemanagerList != null && resourcemanagerList.size() >= 2) {
+            String rm1Host = resourcemanagerList.get(0);
+            String rm2Host = resourcemanagerList.get(1);
+
+            // rm-ids: Use existing config if present, otherwise default to rm1,rm2
+            String rmIds = "rm1,rm2";
+            Object rmIdsObj = yarnSite.get("yarn.resourcemanager.ha.rm-ids");
+            if (rmIdsObj != null && StringUtils.isNotBlank(rmIdsObj.toString())) {
+                rmIds = rmIdsObj.toString().trim();
+            }
+            String[] rmIdArr = rmIds.split("\\s*,\\s*");
+            String rm1Id = rmIdArr.length > 0 && StringUtils.isNotBlank(rmIdArr[0]) ? rmIdArr[0] : "rm1";
+            String rm2Id = rmIdArr.length > 1 && StringUtils.isNotBlank(rmIdArr[1]) ? rmIdArr[1] : "rm2";
+
+            yarnSite.put("yarn.resourcemanager.ha.enabled", "true");
+            yarnSite.put("yarn.resourcemanager.ha.rm-ids", rm1Id + "," + rm2Id);
+
+            // cluster-id: Respect if set by server, otherwise provide a stable default
+            if (yarnSite.get("yarn.resourcemanager.cluster-id") == null
+                    || StringUtils.isBlank(yarnSite.get("yarn.resourcemanager.cluster-id").toString())) {
+                yarnSite.put("yarn.resourcemanager.cluster-id", "yarn-cluster");
+            }
+
+            // zk-address: Respect if set by server, otherwise auto-generate like in coreSite()
+            Object zkAddr = yarnSite.get("yarn.resourcemanager.zk-address");
+            if (zkAddr == null || StringUtils.isBlank(zkAddr.toString())) {
+                try {
+                    List<String> zookeeperServerHosts = LocalSettings.componentHosts("zookeeper_server");
+                    Map<String, Object> ZKPort = LocalSettings.configurations("zookeeper", "zoo.cfg");
+                    String clientPort = (String) ZKPort.get("clientPort");
+                    StringBuilder zkString = new StringBuilder();
+                    for (int i = 0; i < zookeeperServerHosts.size(); i++) {
+                        String host = zookeeperServerHosts.get(i);
+                        if (host == null || host.trim().isEmpty()) {
+                            continue;
+                        }
+                        zkString.append(host.trim()).append(":").append(clientPort);
+                        if (i != zookeeperServerHosts.size() - 1) {
+                            zkString.append(",");
+                        }
+                    }
+                    if (zkString.length() > 0) {
+                        yarnSite.put("yarn.resourcemanager.zk-address", zkString.toString());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to auto-generate yarn.resourcemanager.zk-address", e);
+                }
+            }
+
+            // Set hostname.rmX
+            yarnSite.put("yarn.resourcemanager.hostname." + rm1Id, rm1Host);
+            yarnSite.put("yarn.resourcemanager.hostname." + rm2Id, rm2Host);
+
+            // webapp.address.rmX: Extract port from existing webapp.address, or default to 8088
+            int webappPort = 8088;
+            Object webappAddress = yarnSite.get("yarn.resourcemanager.webapp.address");
+            if (webappAddress != null && webappAddress.toString().contains(":")) {
+                try {
+                    String portStr = webappAddress.toString().split(":")[1].trim();
+                    webappPort = Integer.parseInt(portStr);
+                } catch (Exception ignored) {
+                }
+            }
+            yarnSite.put("yarn.resourcemanager.webapp.address." + rm1Id, rm1Host + ":" + webappPort);
+            yarnSite.put("yarn.resourcemanager.webapp.address." + rm2Id, rm2Host + ":" + webappPort);
+
+            // Auto-generate other HA addresses by extracting ports from single-node configs
+            generateHaAddress(yarnSite, "yarn.resourcemanager.address", rm1Id, rm1Host, rm2Id, rm2Host, 8032);
+            generateHaAddress(yarnSite, "yarn.resourcemanager.admin.address", rm1Id, rm1Host, rm2Id, rm2Host, 8033);
+            generateHaAddress(
+                    yarnSite,
                     "yarn.resourcemanager.resource-tracker.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.resource-tracker.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
-            yarnSite.put(
-                    "yarn.resourcemanager.scheduler.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.scheduler.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
-            yarnSite.put(
-                    "yarn.resourcemanager.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
-            yarnSite.put(
-                    "yarn.resourcemanager.admin.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.admin.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
-            yarnSite.put(
-                    "yarn.resourcemanager.webapp.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.webapp.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
-            yarnSite.put(
-                    "yarn.resourcemanager.webapp.https.address",
-                    ((String) yarnSite.get("yarn.resourcemanager.webapp.https.address"))
-                            .replace("0.0.0.0", resourcemanagerList.get(0)));
+                    rm1Id,
+                    rm1Host,
+                    rm2Id,
+                    rm2Host,
+                    8031);
+            generateHaAddress(
+                    yarnSite, "yarn.resourcemanager.scheduler.address", rm1Id, rm1Host, rm2Id, rm2Host, 8030);
+
+            // Remove single-RM keys to avoid conflicts
+            yarnSite.remove("yarn.resourcemanager.hostname");
+            yarnSite.remove("yarn.resourcemanager.address");
+            yarnSite.remove("yarn.resourcemanager.admin.address");
+            yarnSite.remove("yarn.resourcemanager.resource-tracker.address");
+            yarnSite.remove("yarn.resourcemanager.scheduler.address");
+            yarnSite.remove("yarn.resourcemanager.webapp.address");
+            yarnSite.remove("yarn.resourcemanager.webapp.https.address");
+
+        } else {
+            // Single ResourceManager
+            if (resourcemanagerList != null && !resourcemanagerList.isEmpty()) {
+                yarnSite.put("yarn.resourcemanager.hostname", MessageFormat.format("{0}", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.resource-tracker.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.resource-tracker.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.scheduler.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.scheduler.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.admin.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.admin.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.webapp.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.webapp.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+                yarnSite.put(
+                        "yarn.resourcemanager.webapp.https.address",
+                        ((String) yarnSite.get("yarn.resourcemanager.webapp.https.address"))
+                                .replace("0.0.0.0", resourcemanagerList.get(0)));
+            }
         }
 
         nodeManagerLogDir = (String) yarnSite.get("yarn.nodemanager.log-dirs");
@@ -303,6 +436,29 @@ public class HadoopParams extends BigtopParams {
      *
      * @param hdfsSite The HDFS site configuration map to be modified
      */
+    private static void generateHaAddress(
+            Map<String, Object> yarnSite,
+            String baseKey,
+            String rm1Id,
+            String rm1Host,
+            String rm2Id,
+            String rm2Host,
+            int defaultPort) {
+
+        int port = defaultPort;
+        Object base = yarnSite.get(baseKey);
+        if (base != null && base.toString().contains(":")) {
+            try {
+                String portStr = base.toString().split(":")[1].trim();
+                port = Integer.parseInt(portStr);
+            } catch (Exception ignored) {
+            }
+        }
+
+        yarnSite.put(baseKey + "." + rm1Id, rm1Host + ":" + port);
+        yarnSite.put(baseKey + "." + rm2Id, rm2Host + ":" + port);
+    }
+
     private void configureNativeLibraryDependentSettings(Map<String, Object> hdfsSite) {
         try {
             // Detect system glibc version to determine native library support

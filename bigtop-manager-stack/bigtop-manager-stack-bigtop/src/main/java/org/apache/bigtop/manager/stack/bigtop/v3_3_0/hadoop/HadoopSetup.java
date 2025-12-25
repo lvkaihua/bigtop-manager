@@ -71,6 +71,7 @@ public class HadoopSetup {
                             hadoopGroup,
                             Constants.PERMISSION_755,
                             true);
+                    break;
                 }
                 case "secondarynamenode": {
                     LinuxFileUtils.createDirectories(
@@ -79,6 +80,7 @@ public class HadoopSetup {
                             hadoopGroup,
                             Constants.PERMISSION_755,
                             true);
+                    break;
                 }
                 case "journalnode": {
                     LinuxFileUtils.createDirectories(
@@ -87,6 +89,7 @@ public class HadoopSetup {
                             hadoopGroup,
                             Constants.PERMISSION_755,
                             true);
+                    break;
                 }
                 case "datanode": {
                     LinuxFileUtils.createDirectories(
@@ -102,6 +105,7 @@ public class HadoopSetup {
                                     dir, hadoopUser, hadoopGroup, Constants.PERMISSION_755, true);
                         }
                     }
+                    break;
                 }
                 case "nodemanager": {
                     if (StringUtils.isNotBlank(hadoopParams.getNodeManagerLogDir())) {
@@ -119,7 +123,10 @@ public class HadoopSetup {
                                     dir, hadoopUser, hadoopGroup, Constants.PERMISSION_755, true);
                         }
                     }
+                    break;
                 }
+                default:
+                    break;
             }
         }
 

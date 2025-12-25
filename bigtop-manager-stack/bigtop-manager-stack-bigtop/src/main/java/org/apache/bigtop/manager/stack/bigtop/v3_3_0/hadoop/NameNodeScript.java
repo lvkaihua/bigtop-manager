@@ -65,6 +65,7 @@ public class NameNodeScript extends AbstractServerScript {
         List<String> namenodeList = LocalSettings.componentHosts("namenode");
         try {
             if (namenodeList != null && !namenodeList.isEmpty() && hostname.equals(namenodeList.get(0))) {
+                // 主 NN：仅在“全新部署未格式化”时 format；升级启用 HA 时不能 format
                 HadoopSetup.formatNameNode(hadoopParams);
                 String startCmd = MessageFormat.format("{0}/hdfs --daemon start namenode", hadoopParams.binDir());
                 ShellResult result = LinuxOSUtils.sudoExecCmd(startCmd, hadoopParams.user());
@@ -73,13 +74,12 @@ public class NameNodeScript extends AbstractServerScript {
                 }
                 return result;
             } else if (namenodeList != null && namenodeList.size() >= 2 && hostname.equals(namenodeList.get(1))) {
+                // Standby NN：此处保留“自动 bootstrap 后启动”的逻辑，兼容初装直接选 2 个 NN 的 HA 模式
                 boolean isPrimaryReady = waitForNameNodeReady(namenodeList.get(0), hadoopParams);
                 if (!isPrimaryReady) {
                     throw new StackException("Primary NameNode is not ready, cannot bootstrap standby");
                 }
-                String bootstrapCmd = MessageFormat.format(
-                        "{0}/hdfs namenode -bootstrapStandby -nonInteractive", hadoopParams.binDir());
-                ShellResult bootstrapResult = LinuxOSUtils.sudoExecCmd(bootstrapCmd, hadoopParams.user());
+                ShellResult bootstrapResult = bootstrapStandby(hadoopParams);
                 if (bootstrapResult.getExitCode() != 0) {
                     throw new StackException("Failed to bootstrap standby NameNode: " + bootstrapResult.getErrMsg());
                 }
@@ -96,6 +96,41 @@ public class NameNodeScript extends AbstractServerScript {
         } catch (Exception e) {
             throw new StackException(e);
         }
+    }
+
+    /**
+     * 在启用 HA 流程中由 server 侧通过 custom command 调用：初始化 shared edits
+     */
+    public ShellResult initializeSharedEdits(Params params) {
+        configure(params);
+        HadoopParams hadoopParams = (HadoopParams) params;
+        String cmd = MessageFormat.format(
+                "{0}/hdfs --config {1} namenode -initializeSharedEdits -nonInteractive",
+                hadoopParams.binDir(),
+                hadoopParams.confDir());
+        try {
+            return LinuxOSUtils.sudoExecCmd(cmd, hadoopParams.user());
+        } catch (Exception e) {
+            throw new StackException(e);
+        }
+    }
+
+    /**
+     * 在启用 HA 流程中由 server 侧通过 custom command 调用：bootstrap standby
+     */
+    public ShellResult bootstrapStandby(Params params) {
+        configure(params);
+        HadoopParams hadoopParams = (HadoopParams) params;
+        try {
+            return bootstrapStandby(hadoopParams);
+        } catch (Exception e) {
+            throw new StackException(e);
+        }
+    }
+
+    private ShellResult bootstrapStandby(HadoopParams hadoopParams) throws Exception {
+        String cmd = MessageFormat.format("{0}/hdfs namenode -bootstrapStandby -nonInteractive", hadoopParams.binDir());
+        return LinuxOSUtils.sudoExecCmd(cmd, hadoopParams.user());
     }
 
     private boolean waitForNameNodeReady(String namenodeHost, HadoopParams hadoopParams) {

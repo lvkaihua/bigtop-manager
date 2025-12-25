@@ -1,0 +1,276 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.bigtop.manager.server.service.impl;
+
+import org.apache.bigtop.manager.common.enums.Command;
+import org.apache.bigtop.manager.common.utils.JsonUtils;
+import org.apache.bigtop.manager.dao.po.ServiceConfigPO;
+import org.apache.bigtop.manager.dao.po.ServicePO;
+import org.apache.bigtop.manager.dao.query.ComponentQuery;
+import org.apache.bigtop.manager.dao.repository.ComponentDao;
+import org.apache.bigtop.manager.dao.repository.ServiceConfigDao;
+import org.apache.bigtop.manager.dao.repository.ServiceDao;
+import org.apache.bigtop.manager.server.enums.CommandLevel;
+import org.apache.bigtop.manager.server.exception.ServerException;
+import org.apache.bigtop.manager.server.model.dto.CommandDTO;
+import org.apache.bigtop.manager.server.model.dto.PropertyDTO;
+import org.apache.bigtop.manager.server.model.dto.ServiceConfigDTO;
+import org.apache.bigtop.manager.server.model.dto.command.ServiceCommandDTO;
+import org.apache.bigtop.manager.server.model.req.EnableYarnRmHaReq;
+import org.apache.bigtop.manager.server.service.YarnHaService;
+import org.apache.bigtop.manager.server.utils.StackConfigUtils;
+import org.apache.bigtop.manager.server.utils.StackUtils;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.annotation.Resource;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class YarnHaServiceImpl implements YarnHaService {
+
+    private static final String HADOOP_SERVICE_NAME = "hadoop";
+    private static final String ZOOKEEPER_SERVICE_NAME = "zookeeper";
+
+    @Resource
+    private ServiceDao serviceDao;
+
+    @Resource
+    private ServiceConfigDao serviceConfigDao;
+
+    @Resource
+    private ComponentDao componentDao;
+
+    @Override
+    @Transactional
+    public CommandDTO buildEnableYarnRmHaCommand(Long clusterId, Long serviceId, EnableYarnRmHaReq req) {
+        ServicePO servicePO = serviceDao.findById(serviceId);
+        if (servicePO == null) {
+            throw new ServerException("Service not found: " + serviceId);
+        }
+        if (!HADOOP_SERVICE_NAME.equalsIgnoreCase(servicePO.getName())) {
+            throw new ServerException("enable-yarn-rm-ha only supports service 'hadoop', but got: " + servicePO.getName());
+        }
+
+        // 1) 写入 yarn-site 推荐 key
+        Map<String, String> yarnSiteUpdates = buildYarnSiteUpdates(clusterId, serviceId, req);
+        upsertServiceConfigProperties(clusterId, serviceId, "yarn-site", yarnSiteUpdates);
+
+        // 2) 触发一次 service configure（会走 ServiceConfigureJob: configure + stop + start）
+        //    注意：这里是最小可用实现；如果需要更细粒度（只滚动 RM），可改为 component 级别 restart。
+        CommandDTO commandDTO = new CommandDTO();
+        commandDTO.setClusterId(clusterId);
+        commandDTO.setCommandLevel(CommandLevel.SERVICE);
+        commandDTO.setCommand(Command.CONFIGURE);
+
+        ServiceCommandDTO serviceCommandDTO = new ServiceCommandDTO();
+        serviceCommandDTO.setServiceName(servicePO.getName());
+
+        // 从数据库取出最新配置，并与 stack 配置合并后塞入 command
+        List<ServiceConfigDTO> mergedConfigs = mergeStackAndDbConfigs(serviceId, servicePO.getName());
+        serviceCommandDTO.setConfigs(mergedConfigs);
+
+        commandDTO.setServiceCommands(List.of(serviceCommandDTO));
+        return commandDTO;
+    }
+
+    private Map<String, String> buildYarnSiteUpdates(Long clusterId, Long serviceId, EnableYarnRmHaReq req) {
+        if (StringUtils.isBlank(req.getActiveResourceManagerHost()) || StringUtils.isBlank(req.getStandbyResourceManagerHost())) {
+            throw new ServerException("active/standby resourcemanager host must not be blank");
+        }
+        if (CollectionUtils.isEmpty(req.getRmIds()) || req.getRmIds().size() < 2) {
+            throw new ServerException("rmIds must be provided and contain at least 2 ids");
+        }
+
+        String rm1Id = req.getRmIds().get(0);
+        String rm2Id = req.getRmIds().get(1);
+
+        Map<String, String> m = new HashMap<>();
+        m.put("yarn.resourcemanager.ha.enabled", "true");
+        m.put("yarn.resourcemanager.ha.rm-ids", String.join(",", req.getRmIds()));
+        m.put("yarn.resourcemanager.cluster-id", req.getYarnClusterId());
+
+        // hostname.rmX
+        m.put("yarn.resourcemanager.hostname." + rm1Id, req.getActiveResourceManagerHost());
+        m.put("yarn.resourcemanager.hostname." + rm2Id, req.getStandbyResourceManagerHost());
+
+        // webapp.address.rmX：优先复用现有 yarn.resourcemanager.webapp.address 的端口，否则默认 8088
+        int webappPort = resolveWebappPort(clusterId, serviceId);
+        m.put("yarn.resourcemanager.webapp.address." + rm1Id, req.getActiveResourceManagerHost() + ":" + webappPort);
+        m.put("yarn.resourcemanager.webapp.address." + rm2Id, req.getStandbyResourceManagerHost() + ":" + webappPort);
+
+        // zk-address：通过 zookeeperServiceId 查询 zookeeper 的 zoo.cfg，并拼接 host:clientPort
+        String zkAddress = buildZkAddress(clusterId, req.getZookeeperServiceId());
+        if (StringUtils.isNotBlank(zkAddress)) {
+            m.put("yarn.resourcemanager.zk-address", zkAddress);
+        }
+
+        // 其它 address.rmX：由 stack 侧 HadoopParams.yarnSite() 自动生成。
+        // 如果你希望由 server 强制写入，可以在此处补齐：
+        // - yarn.resourcemanager.address.rmX
+        // - yarn.resourcemanager.admin.address.rmX
+        // - yarn.resourcemanager.resource-tracker.address.rmX
+        // - yarn.resourcemanager.scheduler.address.rmX
+
+        // 避免混杂：服务端侧也清理单 RM key（DB 侧清理，避免 UI/渲染混杂）
+        m.put("__delete__.yarn.resourcemanager.hostname", "");
+        m.put("__delete__.yarn.resourcemanager.address", "");
+        m.put("__delete__.yarn.resourcemanager.admin.address", "");
+        m.put("__delete__.yarn.resourcemanager.resource-tracker.address", "");
+        m.put("__delete__.yarn.resourcemanager.scheduler.address", "");
+        m.put("__delete__.yarn.resourcemanager.webapp.address", "");
+        m.put("__delete__.yarn.resourcemanager.webapp.https.address", "");
+        return m;
+    }
+
+    private int resolveWebappPort(Long clusterId, Long serviceId) {
+        // Try reading existing yarn.resourcemanager.webapp.address from current hadoop service yarn-site
+        // Default: 8088
+        int defaultPort = 8088;
+        try {
+            ServiceConfigPO yarnSite = serviceConfigDao.findByServiceIdAndName(serviceId, "yarn-site");
+            if (yarnSite == null || StringUtils.isBlank(yarnSite.getPropertiesJson())) {
+                return defaultPort;
+            }
+            Map<String, Object> props = JsonUtils.readFromString(yarnSite.getPropertiesJson());
+            Object addr = props.get("yarn.resourcemanager.webapp.address");
+            if (addr != null && addr.toString().contains(":")) {
+                String portStr = addr.toString().split(":")[1].trim();
+                return Integer.parseInt(portStr);
+            }
+        } catch (Exception ignored) {
+        }
+        return defaultPort;
+    }
+
+    private String buildZkAddress(Long clusterId, Long zookeeperServiceId) {
+        ServicePO zkService = serviceDao.findById(zookeeperServiceId);
+        if (zkService == null) {
+            throw new ServerException("zookeeper service not found: " + zookeeperServiceId);
+        }
+        if (!ZOOKEEPER_SERVICE_NAME.equalsIgnoreCase(zkService.getName())) {
+            throw new ServerException(
+                    "zookeeperServiceId must point to service 'zookeeper', but got: " + zkService.getName());
+        }
+
+        List<ServiceConfigPO> zkConfigs = serviceConfigDao.findByServiceId(zookeeperServiceId);
+        ServiceConfigPO zooCfg = null;
+        for (ServiceConfigPO po : zkConfigs) {
+            if ("zoo.cfg".equals(po.getName())) {
+                zooCfg = po;
+                break;
+            }
+        }
+        if (zooCfg == null || StringUtils.isBlank(zooCfg.getPropertiesJson())) {
+            // 允许为空：stack 侧会尝试自动生成；但 server 侧最好能写入
+            return "";
+        }
+
+        Map<String, Object> props = JsonUtils.readFromString(zooCfg.getPropertiesJson());
+        Object clientPortObj = props.get("clientPort");
+        String clientPort = clientPortObj == null ? "2181" : clientPortObj.toString().trim();
+
+        // ZooKeeper hosts: query component table by serviceId + component name
+        ComponentQuery query = ComponentQuery.builder()
+                .serviceId(zookeeperServiceId)
+                .name("zookeeper_server")
+                .build();
+        List<String> zkHosts = componentDao.findByQuery(query).stream()
+                .map(x -> x.getHostname())
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+
+        if (CollectionUtils.isEmpty(zkHosts)) {
+            // 允许为空：stack 侧会尝试自动生成；但 server 侧最好能写入
+            return "";
+        }
+
+        return String.join(",", zkHosts.stream().map(h -> h.trim() + ":" + clientPort).toList());
+    }
+
+    private void upsertServiceConfigProperties(Long clusterId, Long serviceId, String configName, Map<String, String> updates) {
+        ServiceConfigPO po = serviceConfigDao.findByServiceIdAndName(serviceId, configName);
+        if (po == null) {
+            po = new ServiceConfigPO();
+            po.setClusterId(clusterId);
+            po.setServiceId(serviceId);
+            po.setName(configName);
+            po.setPropertiesJson("{}");
+            serviceConfigDao.save(po);
+            po = serviceConfigDao.findByServiceIdAndName(serviceId, configName);
+        }
+
+        Map<String, Object> props = new HashMap<>();
+        if (StringUtils.isNotBlank(po.getPropertiesJson())) {
+            props.putAll(JsonUtils.readFromString(po.getPropertiesJson()));
+        }
+
+        // Support in-method delete semantics: keys prefixed with "__delete__." will be removed.
+        for (Map.Entry<String, String> e : updates.entrySet()) {
+            String k = e.getKey();
+            if (k != null && k.startsWith("__delete__.")) {
+                props.remove(k.substring("__delete__.".length()));
+            } else {
+                props.put(k, e.getValue());
+            }
+        }
+        po.setPropertiesJson(JsonUtils.writeAsString(props));
+        serviceConfigDao.partialUpdateByIds(List.of(po));
+    }
+
+    private List<ServiceConfigDTO> mergeStackAndDbConfigs(Long serviceId, String serviceName) {
+        List<ServiceConfigPO> dbConfigs = serviceConfigDao.findByServiceId(serviceId);
+        List<ServiceConfigDTO> oriConfigs = StackUtils.SERVICE_CONFIG_MAP.get(serviceName);
+        if (oriConfigs == null) {
+            oriConfigs = List.of();
+        }
+
+        List<ServiceConfigDTO> newConfigs = new ArrayList<>();
+        for (ServiceConfigPO po : dbConfigs) {
+            ServiceConfigDTO dto = new ServiceConfigDTO();
+            dto.setId(po.getId());
+            dto.setName(po.getName());
+
+            Map<String, Object> props = StringUtils.isBlank(po.getPropertiesJson())
+                    ? Map.of()
+                    : JsonUtils.readFromString(po.getPropertiesJson());
+
+            List<PropertyDTO> propertyDTOS = new ArrayList<>();
+            for (Map.Entry<String, Object> e : props.entrySet()) {
+                PropertyDTO p = new PropertyDTO();
+                p.setName(e.getKey());
+                p.setValue(e.getValue() == null ? null : e.getValue().toString());
+                propertyDTOS.add(p);
+            }
+            dto.setProperties(propertyDTOS);
+            newConfigs.add(dto);
+        }
+
+        return StackConfigUtils.mergeServiceConfigs(oriConfigs, newConfigs);
+    }
+}
+

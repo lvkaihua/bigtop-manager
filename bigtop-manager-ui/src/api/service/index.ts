@@ -61,6 +61,36 @@ export const takeServiceConfigSnapshot = (pathParams: ServiceParams, data: Snaps
   )
 }
 
+export interface EnableHdfsHaReq {
+  activeNameNodeHost: string
+  standbyNameNodeHost: string
+  journalNodeHosts: string[]
+  zookeeperServiceId: number
+  zkfcHosts: string[]
+  nameservice: string
+}
+
+export const enableHdfsHa = (clusterId: number, serviceId: number, data: EnableHdfsHaReq) => {
+  return post(`/clusters/${clusterId}/services/${serviceId}/actions/enable-hdfs-ha`, data)
+}
+
+export interface EnableYarnRmHaReq {
+  /** rm1 host */
+  activeResourceManagerHost: string
+  /** rm2 host */
+  standbyResourceManagerHost: string
+  /** yarn.resourcemanager.ha.rm-ids，例如 rm1,rm2 */
+  rmIds: string[]
+  /** yarn.resourcemanager.cluster-id */
+  yarnClusterId: string
+  /** zookeeper service id，用于拼接/下发 yarn.resourcemanager.zk-address */
+  zookeeperServiceId: number
+}
+
+export const enableYarnRmHa = (clusterId: number, serviceId: number, data: EnableYarnRmHaReq) => {
+  return post(`/clusters/${clusterId}/services/${serviceId}/actions/enable-yarn-rm-ha`, data)
+}
+
 export const recoveryServiceConfigSnapshot = (pathParams: SnapshotRecovery) => {
   return post<ServiceConfig[]>(
     `/clusters/${pathParams.clusterId}/services/${pathParams.id}/config-snapshots/${pathParams.snapshotId}`
